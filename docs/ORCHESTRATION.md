@@ -13,6 +13,7 @@ Use Skillpackager after a skill repository has a first usable `SKILL.md` and fix
 2. Run `node bin/skillpackager.js <skill-dir> --format markdown`.
 3. Review failed checks before creating a release-candidate PR.
 4. Attach the report to PR notes when it helps reviewers.
+5. Use `--strict` in scheduled automation so failed runs leave a short stderr breadcrumb.
 
 ## Side-effect boundary
 
