@@ -94,6 +94,7 @@ export function toMarkdown(report) {
     `Status: ${status}`,
     '',
     `Skill: ${report.manifest.name}`,
+    `Files: ${report.manifest.fileCount}`,
     '',
     '## Checks',
     ''
