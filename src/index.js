@@ -75,6 +75,7 @@ export function buildManifest({ root, files, sections }) {
     name: path.basename(root),
     generatedAt: new Date(0).toISOString(),
     entrypoint: 'SKILL.md',
+    fileCount: files.length,
     files,
     sections: sections.map((section) => section.title),
     sideEffects: inferSideEffects(sections),
