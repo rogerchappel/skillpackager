@@ -10,6 +10,7 @@
     "test": "node --test",
     "check": "node --check src/index.js && node --check bin/skillpackager.js",
     "smoke": "node bin/skillpackager.js fixtures/good-skill --format markdown",
+    "smoke:bad": "node bin/skillpackager.js fixtures/bad-skill --strict || test $? -eq 2",
     "build": "npm run check && npm test"
   },
   "keywords": [
