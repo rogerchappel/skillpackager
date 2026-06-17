@@ -11,7 +11,8 @@
     "check": "node --check src/index.js && node --check bin/skillpackager.js",
     "smoke": "node bin/skillpackager.js fixtures/good-skill --format markdown",
     "smoke:bad": "node bin/skillpackager.js fixtures/bad-skill --strict || test $? -eq 2",
-    "build": "npm run check && npm test"
+    "build": "npm run check && npm test",
+    "package:smoke": "npm pack --dry-run"
   },
   "keywords": [
     "agents",
@@ -24,5 +25,9 @@
   "license": "MIT",
   "engines": {
     "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogerchappel/skillpackager.git"
   }
 }
