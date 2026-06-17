@@ -109,6 +109,12 @@ export function toMarkdown(report) {
   return `${lines.join('\n')}\n`;
 }
 
+export function failedCheckHints(report) {
+  return report.checks
+    .filter((check) => !check.ok)
+    .map((check) => `${check.id}: ${check.message}`);
+}
+
 export async function runCli(argv, io) {
   const args = parseArgs(argv);
   if (args.help || !args.skillDir) {
