@@ -13,10 +13,12 @@ node bin/skillpackager.js fixtures/good-skill --format markdown
 ## CLI
 
 ```bash
-skillpackager <skill-dir> [--format json|markdown]
+skillpackager <skill-dir> [--format json|markdown] [--strict]
 ```
 
 The command exits with code `2` when packaging checks fail. Reports include required section checks, fixture presence, docs presence, safety language, and a dry-run package plan.
+
+Use `--strict` in automation when stderr should include a compact failed-check count.
 
 ## Example
 
