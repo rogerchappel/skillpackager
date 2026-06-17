@@ -30,7 +30,7 @@ describe('skillpackager', () => {
     const report = await inspectSkill(path.join(root, 'fixtures/good-skill'));
     const markdown = toMarkdown(report);
     assert.match(markdown, /Status: pass/);
-    assert.match(markdown, /fixtures\/good-skill/);
+    assert.match(markdown, /fixtures\/evidence\.txt/);
   });
 
   it('returns failed check hints for reviewers', async () => {
