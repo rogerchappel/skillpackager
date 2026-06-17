@@ -124,6 +124,9 @@ export async function runCli(argv, io) {
   const report = await inspectSkill(path.resolve(io.cwd, args.skillDir));
   const output = args.format === 'json' ? `${JSON.stringify(report, null, 2)}\n` : toMarkdown(report);
   io.stdout.write(output);
+  if (args.strict && report.summary.failed > 0) {
+    io.stderr.write(`${report.summary.failed} packaging checks failed\n`);
+  }
   if (!report.summary.ok) {
     process.exitCode = 2;
   }
@@ -134,6 +137,7 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') args.help = true;
+    else if (value === '--strict') args.strict = true;
     else if (value === '--format') args.format = argv[++index] ?? 'json';
     else if (!args.skillDir) args.skillDir = value;
   }
