@@ -145,7 +145,7 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  return `Usage: skillpackager <skill-dir> [--format json|markdown]\n`;
+  return `Usage: skillpackager <skill-dir> [--format json|markdown] [--strict]\n`;
 }
 
 async function listFiles(root, prefix = '') {
