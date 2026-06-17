@@ -46,5 +46,9 @@ The first release uses conventional Markdown headings and a fixed required-secti
 npm test
 npm run check
 npm run smoke
+npm run package:smoke
+npm run release:check
 bash scripts/validate.sh
 ```
+
+Use `npm run release:check` before publishing or opening a release PR.
