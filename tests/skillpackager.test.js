@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectSkill, parseSections, toMarkdown } from '../src/index.js';
+import { failedCheckHints, inspectSkill, parseSections, toMarkdown } from '../src/index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -31,5 +31,10 @@ describe('skillpackager', () => {
     const markdown = toMarkdown(report);
     assert.match(markdown, /Status: pass/);
     assert.match(markdown, /fixtures\/good-skill/);
+  });
+
+  it('returns failed check hints for reviewers', async () => {
+    const report = await inspectSkill(path.join(root, 'fixtures/bad-skill'));
+    assert.ok(failedCheckHints(report).some((hint) => hint.startsWith('section:required-tools')));
   });
 });
