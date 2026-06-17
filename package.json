@@ -1,0 +1,27 @@
+{
+  "name": "skillpackager",
+  "version": "0.1.0",
+  "description": "Local-first packaging checks for agent skills.",
+  "type": "module",
+  "bin": {
+    "skillpackager": "./bin/skillpackager.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/index.js && node --check bin/skillpackager.js",
+    "smoke": "node bin/skillpackager.js fixtures/good-skill --format markdown",
+    "build": "npm run check && npm test"
+  },
+  "keywords": [
+    "agents",
+    "skills",
+    "packaging",
+    "validation",
+    "dry-run"
+  ],
+  "author": "Roger Chappel",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}
