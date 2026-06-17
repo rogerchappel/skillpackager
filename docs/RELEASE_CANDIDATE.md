@@ -23,6 +23,14 @@ npm run smoke
 bash scripts/validate.sh
 ```
 
+## 2026-06-17 verification
+
+- `npm test`: pass
+- `npm run check`: pass
+- `npm run build`: pass
+- `npm run smoke`: pass
+- `bash scripts/validate.sh`: pass
+
 ## Known limits
 
 - Fixed required-section list.
