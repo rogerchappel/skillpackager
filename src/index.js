@@ -18,7 +18,7 @@ export async function inspectSkill(skillDir) {
   const skillText = await readFile(skillPath, 'utf8');
   const files = await listFiles(root);
   const sections = parseSections(skillText);
-  const checks = buildChecks({ sections, files, skillText });
+  const checks = buildChecks({ sections, files, skillText, requiredSections: REQUIRED_SECTIONS });
   return {
     skillDir: root,
     manifest: buildManifest({ root, files, sections }),
@@ -39,9 +39,9 @@ export function parseSections(markdown) {
   });
 }
 
-export function buildChecks({ sections, files, skillText }) {
+export function buildChecks({ sections, files, skillText, requiredSections = REQUIRED_SECTIONS }) {
   const sectionTitles = new Set(sections.map((section) => section.title.toLowerCase()));
-  const checks = REQUIRED_SECTIONS.map((section) => ({
+  const checks = requiredSections.map((section) => ({
     id: `section:${slug(section)}`,
     ok: sectionTitles.has(section.toLowerCase()),
     message: `SKILL.md includes "${section}"`
