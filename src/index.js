@@ -10,6 +10,8 @@ const REQUIRED_SECTIONS = [
   'Validation'
 ];
 
+export { REQUIRED_SECTIONS };
+
 export async function inspectSkill(skillDir) {
   const root = path.resolve(skillDir);
   const skillPath = path.join(root, 'SKILL.md');
