@@ -12,7 +12,7 @@
     "smoke": "node bin/skillpackager.js fixtures/good-skill --format markdown",
     "smoke:bad": "node bin/skillpackager.js fixtures/bad-skill --strict || test $? -eq 2",
     "build": "npm run check && npm test",
-    "package:smoke": "npm pack --dry-run",
+    "package:smoke": "node scripts/package-smoke.js",
     "release:check": "npm run check && npm test && npm run smoke && npm run smoke:bad && npm run package:smoke",
     "lint": "npm run check"
   },
