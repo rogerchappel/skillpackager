@@ -15,7 +15,18 @@ const output = execFileSync('npm', ['pack', '--dry-run', '--json'], { encoding: 
 const [pack] = JSON.parse(output);
 const files = new Set(pack.files.map((file) => file.path));
 
-for (const required of ['package.json', 'README.md', 'LICENSE', 'bin/skillpackager.js', 'src/index.js', 'fixtures/good-skill/SKILL.md']) {
+for (const required of [
+  'package.json',
+  'README.md',
+  'LICENSE',
+  'SECURITY.md',
+  'CHANGELOG.md',
+  'CONTRIBUTING.md',
+  'bin/skillpackager.js',
+  'src/index.js',
+  'fixtures/good-skill/SKILL.md',
+  'fixtures/bad-skill/SKILL.md'
+]) {
   if (!files.has(required)) {
     throw new Error(`npm pack is missing ${required}`);
   }
