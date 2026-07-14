@@ -6,12 +6,22 @@
   "bin": {
     "skillpackager": "./bin/skillpackager.js"
   },
+  "files": [
+    "bin",
+    "src",
+    "fixtures",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test",
     "check": "node --check src/index.js && node --check bin/skillpackager.js",
     "smoke": "node bin/skillpackager.js fixtures/good-skill --format markdown",
     "smoke:bad": "node bin/skillpackager.js fixtures/bad-skill --strict || test $? -eq 2",
-    "build": "npm run check && npm test"
+    "build": "npm run check && npm test",
+    "package:smoke": "node scripts/package-smoke.js",
+    "release:check": "npm run check && npm test && npm run smoke && npm run smoke:bad && npm run package:smoke"
   },
   "keywords": [
     "agents",
@@ -22,6 +32,14 @@
   ],
   "author": "Roger Chappel",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogerchappel/skillpackager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rogerchappel/skillpackager/issues"
+  },
+  "homepage": "https://github.com/rogerchappel/skillpackager#readme",
   "engines": {
     "node": ">=20"
   }
