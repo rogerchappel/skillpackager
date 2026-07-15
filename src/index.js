@@ -12,6 +12,11 @@ const REQUIRED_SECTIONS = [
 
 export { REQUIRED_SECTIONS };
 
+export async function packageVersion() {
+  const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  return packageJson.version;
+}
+
 export async function inspectSkill(skillDir) {
   const root = path.resolve(skillDir);
   const skillPath = path.join(root, 'SKILL.md');
@@ -117,6 +122,10 @@ export function failedCheckHints(report) {
 
 export async function runCli(argv, io) {
   const args = parseArgs(argv);
+  if (args.version) {
+    io.stdout.write(`${await packageVersion()}\n`);
+    return;
+  }
   if (args.help || !args.skillDir) {
     io.stdout.write(usage());
     return;
@@ -137,6 +146,7 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') args.help = true;
+    else if (value === '--version') args.version = true;
     else if (value === '--strict') args.strict = true;
     else if (value === '--format') args.format = argv[++index] ?? 'json';
     else if (!args.skillDir) args.skillDir = value;
