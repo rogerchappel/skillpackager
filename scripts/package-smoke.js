@@ -38,4 +38,14 @@ for (const file of files) {
   }
 }
 
+const help = execFileSync('node', ['bin/skillpackager.js', '--help'], { encoding: 'utf8' });
+if (!help.includes('Usage: skillpackager')) {
+  throw new Error('CLI help output is missing usage text');
+}
+
+const version = execFileSync('node', ['bin/skillpackager.js', '--version'], { encoding: 'utf8' }).trim();
+if (version !== pkg.version) {
+  throw new Error(`CLI version ${version} does not match package version ${pkg.version}`);
+}
+
 console.log(`package smoke passed for ${pkg.name} with ${files.size} packed files`);
