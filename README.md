@@ -14,6 +14,8 @@ node bin/skillpackager.js fixtures/good-skill --format markdown
 
 ```bash
 skillpackager <skill-dir> [--format json|markdown] [--strict]
+skillpackager --help
+skillpackager --version
 ```
 
 The command exits with code `2` when packaging checks fail. Reports include required section checks, fixture presence, docs presence, safety language, and a dry-run package plan.

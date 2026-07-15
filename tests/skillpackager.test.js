@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { failedCheckHints, inspectSkill, parseSections, toMarkdown } from '../src/index.js';
+import { failedCheckHints, inspectSkill, packageVersion, parseSections, runCli, toMarkdown } from '../src/index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -36,5 +36,15 @@ describe('skillpackager', () => {
   it('returns failed check hints for reviewers', async () => {
     const report = await inspectSkill(path.join(root, 'fixtures/bad-skill'));
     assert.ok(failedCheckHints(report).some((hint) => hint.startsWith('section:required-tools')));
+  });
+
+  it('prints the package version for release smoke checks', async () => {
+    let stdout = '';
+    await runCli(['--version'], {
+      cwd: root,
+      stdout: { write: (chunk) => { stdout += chunk; } },
+      stderr: { write: () => {} }
+    });
+    assert.equal(stdout, `${await packageVersion()}\n`);
   });
 });
