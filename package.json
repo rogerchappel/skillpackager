@@ -25,6 +25,9 @@
   ],
   "author": "Roger Chappel",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rogerchappel/skillpackager.git"
@@ -33,9 +36,6 @@
     "url": "https://github.com/rogerchappel/skillpackager/issues"
   },
   "homepage": "https://github.com/rogerchappel/skillpackager#readme",
-  "engines": {
-    "node": ">=20"
-  },
   "files": [
     "bin",
     "src",
