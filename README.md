@@ -18,7 +18,14 @@ skillpackager --help
 skillpackager --version
 ```
 
-The command exits with code `2` when packaging checks fail. Reports include required section checks, fixture presence, docs presence, safety language, and a dry-run package plan.
+The command exits with code `2` when packaging checks fail. It exits with a
+nonzero usage error when `--format` is missing a value or is not `json` or
+`markdown`.
+
+Reports require each named section to contain content. The fenced example must
+appear inside `Examples`, and dry-run or approval language must appear in the
+boundary sections. Reports also check fixture and docs presence and include a
+dry-run package plan.
 
 Use `--strict` in automation when stderr should include a compact failed-check count.
 
@@ -40,7 +47,9 @@ Use the failed check IDs to decide what the skill needs before release.
 
 ## Limitations
 
-The first release uses conventional Markdown headings and a fixed required-section list. It does not yet support custom policy packs, CI annotation output, or release comparison reports.
+The first release uses conventional level-two Markdown headings and a fixed
+required-section list. It does not yet support custom policy packs, CI
+annotation output, or release comparison reports.
 
 ## Development
 

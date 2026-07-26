@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Require meaningful bodies for required skill sections and scope example and
+  safety checks to their relevant sections.
+- Reject missing or unsupported `--format` values with a usage error.
+
 ## 0.1.0
 
 - Initial local-first skill packaging readiness CLI.
