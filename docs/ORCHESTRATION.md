@@ -5,7 +5,7 @@ Use Skillpackager after a skill repository has a first usable `SKILL.md` and fix
 ## Inputs
 
 - Path to a local skill directory.
-- Optional output format, `json` or `markdown`.
+- Optional `--format` value: exactly `json` or `markdown` (defaults to `json`).
 
 ## Workflow
 
@@ -21,4 +21,10 @@ The CLI only reads local files and writes to stdout. It does not publish package
 
 ## Failure handling
 
-Treat a failed report as a packaging readiness issue. Fix the skill or document why the missing section is intentional before release.
+Treat a failed report as a packaging readiness issue. Required headings need
+nonempty bodies, fenced examples belong in the `Examples` body, and affirmative
+dry-run or approval language belongs in the boundary sections. Fix the skill or
+document why the failed check is intentional before release.
+
+An unsupported or missing `--format` value is a CLI usage error and does not
+produce a report.
