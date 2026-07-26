@@ -45,17 +45,29 @@ export function parseSections(markdown) {
 }
 
 export function buildChecks({ sections, files, skillText, requiredSections = REQUIRED_SECTIONS }) {
-  const sectionTitles = new Set(sections.map((section) => section.title.toLowerCase()));
-  const checks = requiredSections.map((section) => ({
-    id: `section:${slug(section)}`,
-    ok: sectionTitles.has(section.toLowerCase()),
-    message: `SKILL.md includes "${section}"`
-  }));
+  const sectionsByTitle = new Map(
+    sections.map((section) => [section.title.toLowerCase(), section])
+  );
+  const checks = requiredSections.map((title) => {
+    const section = sectionsByTitle.get(title.toLowerCase());
+    return {
+      id: `section:${slug(title)}`,
+      ok: Boolean(section?.body.trim()),
+      message: section
+        ? `SKILL.md section "${title}" includes meaningful content`
+        : `SKILL.md includes section "${title}"`
+    };
+  });
+  const examples = sectionsByTitle.get('examples');
+  const boundaryContent = [
+    sectionsByTitle.get('side-effect boundaries')?.body,
+    sectionsByTitle.get('approval requirements')?.body
+  ].filter(Boolean).join('\n');
 
   checks.push({
     id: 'examples:code-block',
-    ok: /```/.test(skillText),
-    message: 'Examples include a fenced block'
+    ok: /```[\s\S]*?```/.test(examples?.body ?? ''),
+    message: 'Examples section includes a complete fenced block'
   });
   checks.push({
     id: 'fixtures:present',
@@ -69,8 +81,8 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
   });
   checks.push({
     id: 'safety:dry-run',
-    ok: /dry[- ]run|no external|approval/i.test(skillText),
-    message: 'Skill describes dry-run or approval boundaries'
+    ok: /dry[- ]run|no external|(?:ask|prompt)(?:s|ed)? (?:for )?(?:user )?approval|approval (?:is )?(?:required|needed)/i.test(boundaryContent),
+    message: 'Boundary sections affirm dry-run, no-external-effect, or approval requirements'
   });
   return checks;
 }
@@ -122,6 +134,11 @@ export function failedCheckHints(report) {
 
 export async function runCli(argv, io) {
   const args = parseArgs(argv);
+  if (args.error) {
+    io.stderr.write(`${args.error}\n${usage()}`);
+    process.exitCode = 64;
+    return;
+  }
   if (args.version) {
     io.stdout.write(`${await packageVersion()}\n`);
     return;
@@ -148,7 +165,14 @@ function parseArgs(argv) {
     if (value === '--help' || value === '-h') args.help = true;
     else if (value === '--version') args.version = true;
     else if (value === '--strict') args.strict = true;
-    else if (value === '--format') args.format = argv[++index] ?? 'json';
+    else if (value === '--format') {
+      const format = argv[++index];
+      if (!['json', 'markdown'].includes(format)) {
+        args.error = '--format requires one of: json, markdown';
+        return args;
+      }
+      args.format = format;
+    }
     else if (!args.skillDir) args.skillDir = value;
   }
   return args;
