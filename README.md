@@ -18,9 +18,9 @@ skillpackager --help
 skillpackager --version
 ```
 
-The command exits with code `2` when packaging checks fail. It exits with a
-nonzero usage error when `--format` is missing a value or is not `json` or
-`markdown`.
+The command exits with code `2` when packaging checks fail. It exits with code
+`64` and prints usage when an option is unknown, an extra positional argument
+is supplied, or `--format` is missing a value or is not `json` or `markdown`.
 
 Reports require each named section to contain content. The fenced example must
 appear inside `Examples`, and dry-run or approval language must appear in the
