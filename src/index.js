@@ -173,7 +173,15 @@ function parseArgs(argv) {
       }
       args.format = format;
     }
+    else if (value.startsWith('-')) {
+      args.error = `Unknown option: ${value}`;
+      return args;
+    }
     else if (!args.skillDir) args.skillDir = value;
+    else {
+      args.error = `Unexpected argument: ${value}`;
+      return args;
+    }
   }
   return args;
 }
