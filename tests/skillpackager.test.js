@@ -86,6 +86,45 @@ describe('skillpackager', () => {
       assert.match(result.stderr, /Usage: skillpackager/);
     }
   });
+
+  it('rejects unknown options with a usage error', () => {
+    for (const args of [
+      ['--bogus'],
+      ['fixtures/good-skill', '--bogus'],
+      ['--bogus', 'fixtures/good-skill']
+    ]) {
+      const result = runBin(args);
+      assert.equal(result.status, 64);
+      assert.equal(result.stdout, '');
+      assert.match(result.stderr, /Unknown option: --bogus/);
+      assert.match(result.stderr, /Usage: skillpackager/);
+    }
+  });
+
+  it('rejects surplus positional arguments with a usage error', () => {
+    const result = runBin(['fixtures/good-skill', 'extra']);
+    assert.equal(result.status, 64);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /Unexpected argument: extra/);
+    assert.match(result.stderr, /Usage: skillpackager/);
+  });
+
+  it('accepts documented options in any order', () => {
+    for (const args of [
+      ['--format', 'markdown', '--strict', 'fixtures/good-skill'],
+      ['--strict', 'fixtures/good-skill', '--format', 'markdown'],
+      ['fixtures/good-skill', '--strict', '--format', 'markdown']
+    ]) {
+      const result = runBin(args);
+      assert.equal(result.status, 0);
+      assert.match(result.stdout, /^# Skill Package Report/m);
+      assert.equal(result.stderr, '');
+    }
+
+    assert.match(runBin(['--help']).stdout, /Usage: skillpackager/);
+    assert.match(runBin(['--strict', '--help']).stdout, /Usage: skillpackager/);
+    assert.match(runBin(['--format', 'json', '--version']).stdout, /^\d+\.\d+\.\d+\n$/);
+  });
 });
 
 function runBin(args) {
