@@ -59,10 +59,8 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
     };
   });
   const examples = sectionsByTitle.get('examples');
-  const boundaryContent = [
-    sectionsByTitle.get('side-effect boundaries')?.body,
-    sectionsByTitle.get('approval requirements')?.body
-  ].filter(Boolean).join('\n');
+  const sideEffectBody = sectionsByTitle.get('side-effect boundaries')?.body;
+  const approvalBody = sectionsByTitle.get('approval requirements')?.body;
 
   checks.push({
     id: 'examples:code-block',
@@ -80,9 +78,14 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
     message: 'Documentation files are included'
   });
   checks.push({
-    id: 'safety:dry-run',
-    ok: /dry[- ]run|no external|(?:ask|prompt)(?:s|ed)? (?:for )?(?:user )?approval|approval (?:is )?(?:required|needed)/i.test(boundaryContent),
-    message: 'Boundary sections affirm dry-run, no-external-effect, or approval requirements'
+    id: 'safety:side-effects',
+    ok: hasResolvedSideEffectDeclaration(sideEffectBody),
+    message: 'Side-effect boundaries affirm dry-run, local-only, or explicit external-effect limits'
+  });
+  checks.push({
+    id: 'safety:approval',
+    ok: hasResolvedApprovalDeclaration(approvalBody),
+    message: 'Approval requirements affirm when approval is required or that none is required'
   });
   return checks;
 }
@@ -208,9 +211,37 @@ async function listFiles(root, prefix = '') {
 
 function inferSideEffects(sections) {
   const boundary = sections.find((section) => section.title.toLowerCase() === 'side-effect boundaries');
-  if (!boundary) return ['unknown'];
-  if (/no external|dry[- ]run|local/i.test(boundary.body)) return ['local-filesystem-read'];
+  if (!hasResolvedSideEffectDeclaration(boundary?.body)) return ['unknown'];
+  if (hasAffirmativeLocalOnlyDeclaration(boundary.body)) return ['local-filesystem-read'];
   return ['review-required'];
+}
+
+function hasResolvedSideEffectDeclaration(body = '') {
+  if (isUnresolvedDeclaration(body)) return false;
+  return hasAffirmativeLocalOnlyDeclaration(body)
+    || /\bexternal (?:writes?|calls?|requests?|side[ -]effects?|effects?|changes?) (?:require|requires|need|needs) (?:review|approval)\b/i.test(body);
+}
+
+function hasAffirmativeLocalOnlyDeclaration(body) {
+  const dryRun = /\bdry[- ]run(?: only| mode)?\b/i.test(body)
+    && !/\b(?:no|not|without|does not|doesn't|cannot|can't)\b[^.\n]{0,30}\bdry[- ]run\b/i.test(body);
+  const localOnly = /\b(?:reads?|access(?:es)?|operations? (?:are|is)) local (?:files?|filesystem) only\b/i.test(body);
+  const noExternal = /\bno external (?:writes?|calls?|requests?|services?|side[ -]effects?|effects?|changes?|network access)\b/i.test(body);
+  return dryRun || localOnly || noExternal;
+}
+
+function hasResolvedApprovalDeclaration(body = '') {
+  if (isUnresolvedDeclaration(body)) return false;
+  return /\b(?:ask|prompt)(?:s|ed)? (?:for )?(?:(?:user|human) )?(?:approval )?before\b/i.test(body)
+    || /\b(?:request|obtain|require|requires|needs?) (?:for )?(?:user |human )?approval before\b/i.test(body)
+    || /\bapproval (?:is )?(?:required|needed) (?:before|for|to)\b/i.test(body)
+    || /\b(?:no approval (?:is )?required|approval is not required|does not require approval)\b/i.test(body);
+}
+
+function isUnresolvedDeclaration(body) {
+  if (!body.trim()) return true;
+  return /\b(?:unknown|tbd|to be determined|not yet (?:defined|determined|documented|specified)|undocumented|not documented|not specified|missing)\b/i.test(body)
+    || /\bno external (?:side[ -])?effects? (?:are|is) documented\b/i.test(body);
 }
 
 function summarize(checks) {
