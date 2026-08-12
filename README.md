@@ -37,6 +37,12 @@ node bin/skillpackager.js fixtures/bad-skill --format json
 
 Use the failed check IDs to decide what the skill needs before release.
 
+### Safety declaration contract
+
+The `Side-effect boundaries` and `Approval requirements` sections must each make a resolved, affirmative declaration. Side-effect boundaries can state that the skill is dry-run only, reads local files only, performs no named external effects (for example, no external writes or network calls), or requires review or approval for external effects. Approval requirements must say when approval is required or explicitly state that no approval is required.
+
+Placeholders and uncertainty such as `unknown`, `TBD`, missing text, `not documented`, or `not specified` fail with `safety:side-effects` and/or `safety:approval`. Merely mentioning a token is not enough: negated text such as “does not support dry-run” also fails. Failed CLI reports retain these IDs in `summary.failedIds` and exit with code `2`.
+
 ## Safety notes
 
 - Reads local files only.
