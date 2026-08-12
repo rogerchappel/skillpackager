@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { failedCheckHints, inspectSkill, packageVersion, parseSections, runCli, toMarkdown } from '../src/index.js';
+import { buildChecks, buildManifest, failedCheckHints, inspectSkill, packageVersion, parseSections, runCli, toMarkdown } from '../src/index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -38,7 +38,8 @@ describe('skillpackager', () => {
       'section:examples',
       'section:validation',
       'examples:code-block',
-      'safety:dry-run'
+      'safety:side-effects',
+      'safety:approval'
     ]);
   });
 
@@ -52,6 +53,50 @@ describe('skillpackager', () => {
   it('returns failed check hints for reviewers', async () => {
     const report = await inspectSkill(path.join(root, 'fixtures/bad-skill'));
     assert.ok(failedCheckHints(report).some((hint) => hint.startsWith('section:required-tools')));
+  });
+
+  it('rejects unresolved and negated safety declarations', () => {
+    const cases = [
+      ['unknown', 'Side effects are unknown.', 'Approval requirements are unknown.'],
+      ['TBD', 'TBD', 'To be determined.'],
+      ['missing', '', ''],
+      ['undocumented', 'No external effects are documented.', 'Approval is not documented.'],
+      ['negated', 'This skill does not support dry-run mode.', 'Approval is not yet defined.']
+    ];
+
+    for (const [name, sideEffects, approval] of cases) {
+      const sections = safetySections(sideEffects, approval);
+      const checks = buildChecks({ sections, files: [], skillText: '', requiredSections: [] });
+      assert.equal(checks.find((check) => check.id === 'safety:side-effects').ok, false, name);
+      assert.equal(checks.find((check) => check.id === 'safety:approval').ok, false, name);
+      assert.deepEqual(buildManifest({ root, files: [], sections }).sideEffects, ['unknown'], name);
+    }
+  });
+
+  it('accepts affirmative safety declarations', () => {
+    const cases = [
+      ['dry-run', 'Runs in dry-run mode.', 'Ask for user approval before changing files.'],
+      ['no-external', 'Performs no external writes.', 'No approval is required.'],
+      ['local-only', 'Reads local files only.', 'Approval is required for account changes.']
+    ];
+
+    for (const [name, sideEffects, approval] of cases) {
+      const sections = safetySections(sideEffects, approval);
+      const checks = buildChecks({ sections, files: [], skillText: '', requiredSections: [] });
+      assert.equal(checks.find((check) => check.id === 'safety:side-effects').ok, true, name);
+      assert.equal(checks.find((check) => check.id === 'safety:approval').ok, true, name);
+      assert.deepEqual(buildManifest({ root, files: [], sections }).sideEffects, ['local-filesystem-read'], name);
+    }
+  });
+
+  it('CLI exits 2 and reports actionable safety ids for a completed unresolved candidate', () => {
+    const result = runBin(['fixtures/unresolved-safety-skill']);
+    assert.equal(result.status, 2);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.summary.ok, false);
+    assert.ok(report.summary.failedIds.includes('safety:side-effects'));
+    assert.ok(report.summary.failedIds.includes('safety:approval'));
+    assert.deepEqual(report.manifest.sideEffects, ['unknown']);
   });
 
   it('prints the package version for release smoke checks', async () => {
@@ -132,4 +177,11 @@ function runBin(args) {
     cwd: root,
     encoding: 'utf8'
   });
+}
+
+function safetySections(sideEffects, approval) {
+  return [
+    { title: 'Side-effect boundaries', body: sideEffects },
+    { title: 'Approval requirements', body: approval }
+  ];
 }
