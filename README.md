@@ -5,7 +5,7 @@ Skillpackager is a local-first CLI for checking whether an agent skill directory
 ## Quickstart
 
 ```bash
-npm install
+npm ci
 npm run build
 node bin/skillpackager.js fixtures/good-skill --format markdown
 ```
@@ -59,7 +59,11 @@ annotation output, or release comparison reports.
 
 ## Development
 
+Install the locked dependencies from a fresh checkout before running the
+development and release checks:
+
 ```bash
+npm ci
 npm test
 npm run check
 npm run smoke

@@ -16,10 +16,8 @@ Ship.
 Run before release:
 
 ```bash
-npm test
-npm run check
-npm run build
-npm run smoke
+npm ci
+npm run release:check
 bash scripts/validate.sh
 ```
 

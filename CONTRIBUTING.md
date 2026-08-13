@@ -5,6 +5,7 @@ Thanks for improving Skillpackager.
 Before opening a pull request, run:
 
 ```bash
+npm ci
 npm run release:check
 ```
 
