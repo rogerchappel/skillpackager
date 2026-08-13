@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a committed npm lockfile and switched CI and contributor workflows to
+  reproducible `npm ci` installs.
 - Require meaningful bodies for required skill sections and scope example and
   safety checks to their relevant sections.
 - Reject missing or unsupported `--format` values with a usage error.
