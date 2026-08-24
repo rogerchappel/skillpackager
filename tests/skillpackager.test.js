@@ -1,11 +1,18 @@
-import { describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildChecks, buildManifest, failedCheckHints, inspectSkill, packageVersion, parseSections, runCli, toMarkdown } from '../src/index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const temporaryDirectories = [];
+
+after(async () => {
+  await Promise.all(temporaryDirectories.map((directory) => rm(directory, { recursive: true, force: true })));
+});
 
 describe('skillpackager', () => {
   it('parses markdown sections', () => {
@@ -18,6 +25,23 @@ describe('skillpackager', () => {
     assert.equal(report.summary.ok, true);
     assert.equal(report.summary.failed, 0);
     assert.equal(report.manifest.packagePlan.dryRunOnly, true);
+  });
+
+  it('keeps manifests and package plans aligned with deterministic exclusions', async () => {
+    const skillDir = await createPackageCandidate();
+    const first = await inspectSkill(skillDir);
+    const second = await inspectSkill(skillDir);
+    const included = ['SKILL.md', 'docs/README.md', 'fixtures/case.txt'];
+
+    assert.deepEqual(first.manifest.files, included);
+    assert.equal(first.manifest.fileCount, included.length);
+    assert.deepEqual(first.manifest.packagePlan.include, included);
+    assert.deepEqual(second, first);
+    assert.doesNotMatch(JSON.stringify(first), /\.git|node_modules|coverage|\.cache/);
+    assert.deepEqual(
+      toMarkdown(second).match(/## Package Plan[\s\S]*/)?.[0],
+      '## Package Plan\n\n- SKILL.md\n- docs/README.md\n- fixtures/case.txt\n'
+    );
   });
 
   it('fails an incomplete skill fixture with actionable ids', async () => {
@@ -184,4 +208,24 @@ function safetySections(sideEffects, approval) {
     { title: 'Side-effect boundaries', body: sideEffects },
     { title: 'Approval requirements', body: approval }
   ];
+}
+
+async function createPackageCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-candidate-'));
+  temporaryDirectories.push(skillDir);
+  const files = {
+    'SKILL.md': '# Candidate\n\n## When to use\n\nNow\n',
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n',
+    '.git/config': '[core]\n',
+    'node_modules/pkg/index.js': 'export default true;\n',
+    'coverage/index.html': '<h1>coverage</h1>\n',
+    '.cache/result.json': '{}\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
 }
