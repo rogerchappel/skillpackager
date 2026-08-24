@@ -9,6 +9,7 @@ const REQUIRED_SECTIONS = [
   'Examples',
   'Validation'
 ];
+const EXCLUDED_DIRECTORIES = new Set(['.cache', '.git', 'coverage', 'node_modules']);
 
 export { REQUIRED_SECTIONS };
 
@@ -101,7 +102,7 @@ export function buildManifest({ root, files, sections }) {
     sideEffects: inferSideEffects(sections),
     packagePlan: {
       dryRunOnly: true,
-      include: files.filter((file) => !file.includes('node_modules'))
+      include: files
     }
   };
 }
@@ -198,6 +199,7 @@ async function listFiles(root, prefix = '') {
   const entries = await readdir(dir);
   const files = [];
   for (const entry of entries) {
+    if (EXCLUDED_DIRECTORIES.has(entry)) continue;
     const relative = path.join(prefix, entry);
     const info = await stat(path.join(root, relative));
     if (info.isDirectory()) {
