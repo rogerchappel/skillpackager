@@ -27,6 +27,12 @@ appear inside `Examples`, and dry-run or approval language must appear in the
 boundary sections. Reports also check fixture and docs presence and include a
 dry-run package plan.
 
+The manifest describes the same files as the dry-run package plan: `files`,
+`fileCount`, and `packagePlan.include` are derived from one sorted file list.
+Skill source such as `SKILL.md` and files beneath `docs/` and `fixtures/` is
+included. Repository, dependency, cache, and coverage trees named `.git`,
+`node_modules`, `.cache`, or `coverage` are excluded at any depth.
+
 Use `--strict` in automation when stderr should include a compact failed-check count.
 
 ## Example
