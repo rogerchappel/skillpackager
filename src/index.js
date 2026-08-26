@@ -34,7 +34,25 @@ export async function inspectSkill(skillDir) {
 }
 
 export function parseSections(markdown) {
-  const matches = [...markdown.matchAll(/^##\s+(.+)$/gm)];
+  const matches = [];
+  let fence = null;
+  for (const match of markdown.matchAll(/^.*(?:\n|$)/gm)) {
+    const line = match[0].replace(/\n$/, '');
+    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (fenceMatch && fenceMatch[1][0] === fence.character
+        && fenceMatch[1].length >= fence.length && /^\s*$/.test(fenceMatch[2])) {
+        fence = null;
+      }
+      continue;
+    }
+    if (fenceMatch) {
+      fence = { character: fenceMatch[1][0], length: fenceMatch[1].length };
+      continue;
+    }
+    const heading = line.match(/^##\s+(.+)$/);
+    if (heading) matches.push({ index: match.index, 0: line, 1: heading[1] });
+  }
   return matches.map((match, index) => {
     const start = match.index + match[0].length;
     const end = matches[index + 1]?.index ?? markdown.length;
