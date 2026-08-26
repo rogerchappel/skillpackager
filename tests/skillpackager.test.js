@@ -20,6 +20,46 @@ describe('skillpackager', () => {
     assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
   });
 
+  it('ignores level-two headings inside variable-length backtick and tilde fences', () => {
+    const markdown = [
+      '# Title',
+      '````markdown',
+      '## Required tools',
+      '```',
+      '````',
+      '~~~markdown',
+      '## Approval requirements',
+      '~~~~',
+      '## When to use',
+      '',
+      'Visible guidance.',
+      '## Validation',
+      '',
+      'Visible validation.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.equal(sections[0].body, 'Visible guidance.');
+  });
+
+  it('CLI rejects required and safety declarations that exist only in fenced examples', async () => {
+    const skillDir = await createFencedHeadingCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 2);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.summary.failedIds, [
+      'section:when-to-use',
+      'section:required-tools',
+      'section:side-effect-boundaries',
+      'section:approval-requirements',
+      'section:validation',
+      'safety:side-effects',
+      'safety:approval'
+    ]);
+    assert.deepEqual(report.manifest.sections, ['Examples']);
+  });
+
   it('passes a complete skill fixture', async () => {
     const report = await inspectSkill(path.join(root, 'fixtures/good-skill'));
     assert.equal(report.summary.ok, true);
@@ -221,6 +261,42 @@ async function createPackageCandidate() {
     'node_modules/pkg/index.js': 'export default true;\n',
     'coverage/index.html': '<h1>coverage</h1>\n',
     '.cache/result.json': '{}\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createFencedHeadingCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-fenced-headings-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '````markdown',
+    '## When to use',
+    'Example-only use.',
+    '## Required tools',
+    'Example-only tools.',
+    '## Side-effect boundaries',
+    'No external writes.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Validation',
+    'Example-only validation.',
+    '````',
+    '## Examples',
+    '```sh',
+    'echo visible-example',
+    '```',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
   };
   for (const [relative, content] of Object.entries(files)) {
     const destination = path.join(skillDir, relative);
