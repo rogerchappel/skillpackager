@@ -20,6 +20,26 @@ describe('skillpackager', () => {
     assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
   });
 
+  it('parses indented and closed CommonMark level-two headings', () => {
+    const markdown = [
+      '# Title',
+      '   ## When to use',
+      '',
+      'Now',
+      '## Validation ###',
+      '',
+      'Later',
+      '```markdown',
+      '   ## Required tools ###',
+      '```'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.equal(sections[0].body, 'Now');
+    assert.match(sections[1].body, /Later/);
+  });
+
   it('ignores level-two headings inside variable-length backtick and tilde fences', () => {
     const markdown = [
       '# Title',
@@ -58,6 +78,22 @@ describe('skillpackager', () => {
       'safety:approval'
     ]);
     assert.deepEqual(report.manifest.sections, ['Examples']);
+  });
+
+  it('CLI accepts a complete skill using indented and closed headings', async () => {
+    const skillDir = await createCommonMarkHeadingCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.summary.ok, true);
+    assert.deepEqual(report.manifest.sections, [
+      'When to use',
+      'Required tools',
+      'Side-effect boundaries',
+      'Approval requirements',
+      'Examples',
+      'Validation'
+    ]);
   });
 
   it('passes a complete skill fixture', async () => {
@@ -291,6 +327,44 @@ async function createFencedHeadingCandidate() {
     '```sh',
     'echo visible-example',
     '```',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createCommonMarkHeadingCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-commonmark-headings-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '   ## When to use',
+    'Use for packaging skills.',
+    '## Required tools ###',
+    'Use local Node.js.',
+    '   ## Side-effect boundaries ###',
+    'Runs in dry-run mode.',
+    '## Approval requirements',
+    'No approval is required.',
+    '   ## Examples ###',
+    '```sh',
+    'skillpackager .',
+    '```',
+    '## Validation ###',
+    'Run the release checks.',
+    '````markdown',
+    '   ## Required tools ###',
+    'Fenced lookalike.',
+    '````',
     ''
   ].join('\n');
   const files = {

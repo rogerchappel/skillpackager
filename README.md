@@ -27,9 +27,11 @@ appear inside `Examples`, and dry-run or approval language must appear in the
 boundary sections. Reports also check fixture and docs presence and include a
 dry-run package plan.
 
-Level-two headings inside backtick or tilde fenced code blocks are treated as
-example content, not declarations. Required and safety sections must therefore
-appear as visible headings outside fenced examples.
+Visible level-two CommonMark ATX headings may have zero to three leading spaces
+and an optional closing sequence of `#` characters, such as
+`   ## Validation ###`. Level-two headings inside backtick or tilde fenced code
+blocks are treated as example content, not declarations. Required and safety
+sections must therefore appear as visible headings outside fenced examples.
 
 The manifest describes the same files as the dry-run package plan: `files`,
 `fileCount`, and `packagePlan.include` are derived from one sorted file list.
@@ -63,8 +65,8 @@ Placeholders and uncertainty such as `unknown`, `TBD`, missing text, `not docume
 
 ## Limitations
 
-The first release uses conventional level-two Markdown headings and a fixed
-required-section list. It does not yet support custom policy packs, CI
+The first release uses CommonMark level-two ATX headings and a fixed required-
+section list. It does not yet support custom policy packs, CI
 annotation output, or release comparison reports.
 
 ## Development

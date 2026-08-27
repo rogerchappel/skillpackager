@@ -50,8 +50,11 @@ export function parseSections(markdown) {
       fence = { character: fenceMatch[1][0], length: fenceMatch[1].length };
       continue;
     }
-    const heading = line.match(/^##\s+(.+)$/);
-    if (heading) matches.push({ index: match.index, 0: line, 1: heading[1] });
+    const heading = line.match(/^ {0,3}##(?:[ \t]+(.*?))?[ \t]*$/);
+    if (heading) {
+      const title = (heading[1] ?? '').replace(/[ \t]+#+[ \t]*$/, '').trim();
+      if (title) matches.push({ index: match.index, 0: line, 1: title });
+    }
   }
   return matches.map((match, index) => {
     const start = match.index + match[0].length;
