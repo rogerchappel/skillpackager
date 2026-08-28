@@ -175,6 +175,11 @@ describe('skillpackager', () => {
     assert.equal(report.summary.ok, true);
     assert.equal(report.summary.failed, 0);
     assert.equal(report.manifest.packagePlan.dryRunOnly, true);
+    assert.notEqual(report.manifest.generatedAt, '1970-01-01T00:00:00.000Z');
+    assert.match(report.manifest.generatedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    const date = new Date(report.manifest.generatedAt);
+    assert.ok(Number.isFinite(date.getTime()));
+    assert.ok(date.getTime() > 1700000000000);
   });
 
   it('keeps manifests and package plans aligned with deterministic exclusions', async () => {
