@@ -63,6 +63,42 @@ describe('skillpackager', () => {
     assert.equal(sections[0].body, 'Visible guidance.');
   });
 
+  it('ignores headings and content inside closed and unclosed HTML comments', () => {
+    const markdown = [
+      '# Title',
+      '## When to use',
+      'Visible before.',
+      '<!-- ## Required tools',
+      'Hidden tools. -->',
+      'Visible after.',
+      '## Validation',
+      'Visible validation.',
+      '<!-- ## Approval requirements',
+      'Hidden through end.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.equal(sections[0].body, 'Visible before.\n\n\nVisible after.');
+    assert.equal(sections[1].body, 'Visible validation.');
+  });
+
+  it('preserves visible declarations surrounding HTML comments', () => {
+    const markdown = [
+      '## Side-effect boundaries',
+      'Reads local files only.',
+      '<!-- Performs external writes. -->',
+      'No external writes.',
+      '## Approval requirements',
+      '<!-- Approval requirements are unknown. -->',
+      'No approval is required.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.equal(sections[0].body, 'Reads local files only.\n\nNo external writes.');
+    assert.equal(sections[1].body, 'No approval is required.');
+  });
+
   it('CLI rejects required and safety declarations that exist only in fenced examples', async () => {
     const skillDir = await createFencedHeadingCandidate();
     const result = runBin([skillDir]);
@@ -78,6 +114,28 @@ describe('skillpackager', () => {
       'safety:approval'
     ]);
     assert.deepEqual(report.manifest.sections, ['Examples']);
+  });
+
+  it('CLI rejects comment-hidden declarations mixed with visible placeholders', async () => {
+    const skillDir = await createHtmlCommentCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 2);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.summary.failedIds, [
+      'section:when-to-use',
+      'section:required-tools',
+      'section:validation',
+      'safety:side-effects',
+      'safety:approval'
+    ]);
+    assert.deepEqual(report.manifest.sections, [
+      'When to use',
+      'Required tools',
+      'Side-effect boundaries',
+      'Approval requirements',
+      'Examples',
+      'Validation'
+    ]);
   });
 
   it('CLI accepts a complete skill using indented and closed headings', async () => {
@@ -365,6 +423,52 @@ async function createCommonMarkHeadingCandidate() {
     '   ## Required tools ###',
     'Fenced lookalike.',
     '````',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createHtmlCommentCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-html-comments-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '<!--',
+    '## When to use',
+    'Hidden use.',
+    '## Required tools',
+    'Hidden tools.',
+    '## Side-effect boundaries',
+    'No external writes.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Validation',
+    'Hidden validation.',
+    '-->',
+    '## When to use',
+    '<!-- Hidden body. -->',
+    '## Required tools',
+    '<!-- Hidden body. -->',
+    '## Side-effect boundaries',
+    'TBD <!-- No external writes. -->',
+    '## Approval requirements',
+    'TBD <!-- No approval is required. -->',
+    '## Examples',
+    '```sh',
+    'echo visible-example',
+    '```',
+    '## Validation',
+    '<!-- unclosed hidden body',
     ''
   ].join('\n');
   const files = {
