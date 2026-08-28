@@ -34,9 +34,10 @@ export async function inspectSkill(skillDir) {
 }
 
 export function parseSections(markdown) {
+  const visibleMarkdown = maskHtmlComments(markdown);
   const matches = [];
   let fence = null;
-  for (const match of markdown.matchAll(/^.*(?:\n|$)/gm)) {
+  for (const match of visibleMarkdown.matchAll(/^.*(?:\n|$)/gm)) {
     const line = match[0].replace(/\n$/, '');
     const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (fence) {
@@ -58,12 +59,30 @@ export function parseSections(markdown) {
   }
   return matches.map((match, index) => {
     const start = match.index + match[0].length;
-    const end = matches[index + 1]?.index ?? markdown.length;
+    const end = matches[index + 1]?.index ?? visibleMarkdown.length;
     return {
       title: match[1].trim(),
-      body: markdown.slice(start, end).trim()
+      body: visibleMarkdown.slice(start, end).replace(/^[ \t]+$/gm, '').trim()
     };
   });
+}
+
+function maskHtmlComments(markdown) {
+  let masked = '';
+  let cursor = 0;
+  while (cursor < markdown.length) {
+    const start = markdown.indexOf('<!--', cursor);
+    if (start === -1) {
+      masked += markdown.slice(cursor);
+      break;
+    }
+    masked += markdown.slice(cursor, start);
+    const closing = markdown.indexOf('-->', start + 4);
+    const end = closing === -1 ? markdown.length : closing + 3;
+    masked += markdown.slice(start, end).replace(/[^\n]/g, ' ');
+    cursor = end;
+  }
+  return masked;
 }
 
 export function buildChecks({ sections, files, skillText, requiredSections = REQUIRED_SECTIONS }) {
