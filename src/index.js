@@ -68,19 +68,43 @@ export function parseSections(markdown) {
 }
 
 function maskHtmlComments(markdown) {
+  let inComment = false;
+  let fence = null;
   let masked = '';
-  let cursor = 0;
-  while (cursor < markdown.length) {
-    const start = markdown.indexOf('<!--', cursor);
-    if (start === -1) {
-      masked += markdown.slice(cursor);
-      break;
+  for (const match of markdown.matchAll(/^.*(?:\n|$)/gm)) {
+    const line = match[0];
+    if (fence) {
+      masked += line;
+      const closingFence = line.match(/^ {0,3}(`{3,}|~{3,})(?:[ \t]*\n?)$/);
+      if (closingFence && closingFence[1][0] === fence[0] && closingFence[1].length >= fence.length) {
+        fence = null;
+      }
+      continue;
     }
-    masked += markdown.slice(cursor, start);
-    const closing = markdown.indexOf('-->', start + 4);
-    const end = closing === -1 ? markdown.length : closing + 3;
-    masked += markdown.slice(start, end).replace(/[^\n]/g, ' ');
-    cursor = end;
+
+    let visibleLine = '';
+    let cursor = 0;
+    while (cursor < line.length) {
+      if (inComment) {
+        const closing = line.indexOf('-->', cursor);
+        const end = closing === -1 ? line.length : closing + 3;
+        visibleLine += line.slice(cursor, end).replace(/[^\n]/g, ' ');
+        cursor = end;
+        inComment = closing === -1;
+        continue;
+      }
+      const start = line.indexOf('<!--', cursor);
+      if (start === -1) {
+        visibleLine += line.slice(cursor);
+        break;
+      }
+      visibleLine += line.slice(cursor, start);
+      cursor = start;
+      inComment = true;
+    }
+    masked += visibleLine;
+    const openingFence = visibleLine.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (openingFence) fence = openingFence[1];
   }
   return masked;
 }
