@@ -99,6 +99,22 @@ describe('skillpackager', () => {
     assert.equal(sections[1].body, 'No approval is required.');
   });
 
+  it('preserves HTML comment markers as visible content inside fenced code', () => {
+    const markdown = [
+      '## Examples',
+      '```html',
+      '<!-- an unclosed example comment',
+      '```',
+      '## Validation',
+      'Visible validation.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['Examples', 'Validation']);
+    assert.match(sections[0].body, /<!-- an unclosed example comment/);
+    assert.equal(sections[1].body, 'Visible validation.');
+  });
+
   it('CLI rejects required and safety declarations that exist only in fenced examples', async () => {
     const skillDir = await createFencedHeadingCandidate();
     const result = runBin([skillDir]);
