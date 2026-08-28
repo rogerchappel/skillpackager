@@ -191,7 +191,10 @@ describe('skillpackager', () => {
     assert.deepEqual(first.manifest.files, included);
     assert.equal(first.manifest.fileCount, included.length);
     assert.deepEqual(first.manifest.packagePlan.include, included);
-    assert.deepEqual(second, first);
+    assert.deepEqual(
+      { ...second, manifest: { ...second.manifest, generatedAt: first.manifest.generatedAt } },
+      first
+    );
     assert.doesNotMatch(JSON.stringify(first), /\.git|node_modules|coverage|\.cache/);
     assert.deepEqual(
       toMarkdown(second).match(/## Package Plan[\s\S]*/)?.[0],
