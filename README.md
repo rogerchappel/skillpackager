@@ -1,6 +1,6 @@
 # Skillpackager
 
-Skillpackager is a local-first CLI for checking whether an agent skill directory is ready to package or review. It reads a candidate `SKILL.md`, docs, and fixtures, then emits a deterministic manifest and validation report.
+Skillpackager is a local-first CLI for checking whether an agent skill directory is ready to package or review. It reads a candidate `SKILL.md`, docs, and fixtures, then emits a package manifest with a generation timestamp and validation report.
 
 ## Quickstart
 
@@ -29,15 +29,19 @@ dry-run package plan.
 
 Visible level-two CommonMark ATX headings may have zero to three leading spaces
 and an optional closing sequence of `#` characters, such as
-`   ## Validation ###`. Level-two headings inside backtick or tilde fenced code
-blocks are treated as example content, not declarations. Required and safety
-sections must therefore appear as visible headings outside fenced examples.
-Content inside closed or unclosed Markdown HTML comments is non-rendered and
-is also excluded from section headings, bodies, examples, and safety checks;
-visible declarations before and after comments remain eligible.
+`   ## Validation ###`. Section parsing recognizes level-two headings (`##`)
+as top-level section boundaries; level-three and deeper headings (`###`) within
+a section are preserved as section body content. Level-two headings inside
+backtick or tilde fenced code blocks are treated as example content, not
+declarations. Required and safety sections must therefore appear as visible
+level-two headings outside fenced examples. Content inside closed or unclosed
+Markdown HTML comments is non-rendered and is also excluded from section
+headings, bodies, examples, and safety checks; visible declarations before and
+after comments remain eligible.
 
 The manifest describes the same files as the dry-run package plan: `files`,
 `fileCount`, and `packagePlan.include` are derived from one sorted file list.
+`generatedAt` records the ISO-8601 UTC timestamp of report generation.
 Skill source such as `SKILL.md` and files beneath `docs/` and `fixtures/` is
 included. Repository, dependency, cache, and coverage trees named `.git`,
 `node_modules`, `.cache`, or `coverage` are excluded at any depth.
@@ -68,9 +72,10 @@ Placeholders and uncertainty such as `unknown`, `TBD`, missing text, `not docume
 
 ## Limitations
 
-The first release uses CommonMark level-two ATX headings and a fixed required-
-section list. It does not yet support custom policy packs, CI
-annotation output, or release comparison reports.
+The first release uses CommonMark level-two ATX headings for section
+boundaries and a fixed required-section list (preserving level-three and deeper
+subsections within section bodies). It does not yet support custom policy packs,
+CI annotation output, or release comparison reports.
 
 ## Development
 
