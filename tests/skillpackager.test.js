@@ -20,6 +20,26 @@ describe('skillpackager', () => {
     assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
   });
 
+  it('preserves level-three and deeper subsections within section bodies', () => {
+    const markdown = [
+      '# Title',
+      '## When to use',
+      '### Subtitle',
+      'Use case details.',
+      '#### Details',
+      'Deep nesting.',
+      '## Validation',
+      '### Verification steps',
+      '1. Step one',
+      '2. Step two'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.equal(sections[0].body, '### Subtitle\nUse case details.\n#### Details\nDeep nesting.');
+    assert.equal(sections[1].body, '### Verification steps\n1. Step one\n2. Step two');
+  });
+
   it('parses indented and closed CommonMark level-two headings', () => {
     const markdown = [
       '# Title',
