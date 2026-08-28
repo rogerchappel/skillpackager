@@ -158,7 +158,7 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
 export function buildManifest({ root, files, sections }) {
   return {
     name: path.basename(root),
-    generatedAt: new Date(0).toISOString(),
+    generatedAt: new Date().toISOString(),
     entrypoint: 'SKILL.md',
     fileCount: files.length,
     files,
