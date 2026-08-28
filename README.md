@@ -32,6 +32,9 @@ and an optional closing sequence of `#` characters, such as
 `   ## Validation ###`. Level-two headings inside backtick or tilde fenced code
 blocks are treated as example content, not declarations. Required and safety
 sections must therefore appear as visible headings outside fenced examples.
+Content inside closed or unclosed Markdown HTML comments is non-rendered and
+is also excluded from section headings, bodies, examples, and safety checks;
+visible declarations before and after comments remain eligible.
 
 The manifest describes the same files as the dry-run package plan: `files`,
 `fileCount`, and `packagePlan.include` are derived from one sorted file list.

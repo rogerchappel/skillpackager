@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Exclude closed and unclosed Markdown HTML comments from section parsing and
+  readiness checks while preserving surrounding visible declarations.
 - Added a committed npm lockfile and switched CI and contributor workflows to
   reproducible `npm ci` installs.
 - Require meaningful bodies for required skill sections and scope example and
