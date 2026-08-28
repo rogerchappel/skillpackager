@@ -11,7 +11,7 @@ Skillpackager reports are deterministic JSON objects.
 
 ## Stability
 
-The `generatedAt` field is fixed for deterministic local review output. Future versions may add fields, but should not remove existing MVP fields without a major version bump.
+The `generatedAt` field records the ISO-8601 UTC timestamp when the report was generated. Future versions may add fields, but should not remove existing MVP fields without a major version bump.
 
 ## Manifest files
 
