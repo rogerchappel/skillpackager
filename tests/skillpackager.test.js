@@ -229,6 +229,43 @@ describe('skillpackager', () => {
     assert.ok(report.summary.failedIds.includes('examples:code-block'));
   });
 
+  it('recognizes complete CommonMark example fences and rejects invalid closures', () => {
+    const cases = [
+      ['tilde fence', '~~~sh\necho ok\n~~~', true],
+      ['longer backtick closer', '````js\nconsole.log(`ok`)\n`````', true],
+      ['longer tilde closer', '~~~~ text\necho ok\n~~~~~', true],
+      ['shorter closer', '````sh\necho no\n```', false],
+      ['mismatched closer', '~~~sh\necho no\n```', false],
+      ['unclosed fence', '```sh\necho no', false],
+      ['backtick in info string', '```bad`info\necho no\n```', false]
+    ];
+
+    for (const [name, body, expected] of cases) {
+      const checks = buildChecks({
+        sections: [{ title: 'Examples', body }],
+        files: [],
+        skillText: '',
+        requiredSections: []
+      });
+      assert.equal(checks.find((check) => check.id === 'examples:code-block').ok, expected, name);
+    }
+  });
+
+  it('CLI accepts tilde and variable-length example fences and rejects bad closures', async () => {
+    for (const [name, fence, expectedStatus] of [
+      ['tilde', '~~~sh\necho ok\n~~~', 0],
+      ['variable length', '````sh\necho ok\n`````', 0],
+      ['short closure', '````sh\necho no\n```', 2],
+      ['mismatched closure', '~~~sh\necho no\n```', 2]
+    ]) {
+      const skillDir = await createExampleFenceCandidate(fence);
+      const result = runBin([skillDir]);
+      assert.equal(result.status, expectedStatus, `${name}: ${result.stderr}`);
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.summary.failedIds.includes('examples:code-block'), expectedStatus === 2, name);
+    }
+  });
+
   it('rejects empty required sections and misplaced safety and example content', async () => {
     const report = await inspectSkill(path.join(root, 'fixtures/empty-sections-skill'));
     assert.equal(report.summary.ok, false);
@@ -513,6 +550,38 @@ async function createHtmlCommentCandidate() {
     '```',
     '## Validation',
     '<!-- unclosed hidden body',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createExampleFenceCandidate(fence) {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-example-fence-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '## When to use',
+    'Use for packaging skills.',
+    '## Required tools',
+    'Use local Node.js.',
+    '## Side-effect boundaries',
+    'Runs in dry-run mode.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Examples',
+    fence,
+    '## Validation',
+    'Run the release checks.',
     ''
   ].join('\n');
   const files = {
