@@ -129,7 +129,7 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
 
   checks.push({
     id: 'examples:code-block',
-    ok: /```[\s\S]*?```/.test(examples?.body ?? ''),
+    ok: hasCompleteFencedBlock(examples?.body ?? ''),
     message: 'Examples section includes a complete fenced block'
   });
   checks.push({
@@ -153,6 +153,23 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
     message: 'Approval requirements affirm when approval is required or that none is required'
   });
   return checks;
+}
+
+function hasCompleteFencedBlock(markdown) {
+  let opening = null;
+  for (const line of markdown.split(/\r?\n/)) {
+    if (!opening) {
+      const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (!match || (match[1][0] === '`' && match[2].includes('`'))) continue;
+      opening = { character: match[1][0], length: match[1].length };
+      continue;
+    }
+
+    const closing = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+    if (closing && closing[1][0] === opening.character
+      && closing[1].length >= opening.length) return true;
+  }
+  return false;
 }
 
 export function buildManifest({ root, files, sections }) {
