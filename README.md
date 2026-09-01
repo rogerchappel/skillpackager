@@ -22,10 +22,12 @@ The command exits with code `2` when packaging checks fail. It exits with code
 `64` and prints usage when an option is unknown, an extra positional argument
 is supplied, or `--format` is missing a value or is not `json` or `markdown`.
 
-Reports require each named section to contain content. The fenced example must
-appear inside `Examples`, and dry-run or approval language must appear in the
-boundary sections. Reports also check fixture and docs presence and include a
-dry-run package plan.
+Reports require each named section to contain content. The `Examples` section
+must contain a complete CommonMark backtick or tilde fence. A closing fence
+must use the same character and at least as many delimiters as its opener;
+shorter, mismatched, and unclosed fences fail validation. Dry-run or approval
+language must appear in the boundary sections. Reports also check fixture and
+docs presence and include a dry-run package plan.
 
 Visible level-two CommonMark ATX headings may have zero to three leading spaces
 and an optional closing sequence of `#` characters, such as
