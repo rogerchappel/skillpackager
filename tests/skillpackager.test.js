@@ -135,6 +135,56 @@ describe('skillpackager', () => {
     assert.equal(sections[1].body, 'Visible validation.');
   });
 
+  it('preserves HTML comment markers inside single and variable-length inline code spans', () => {
+    const markdown = [
+      '## When to use',
+      'Use this when documenting `<!--` and `-->` literals.',
+      'Use ``a ` code span containing <!-- and -->`` too.',
+      '## Required tools',
+      'Node.js only.',
+      '## Validation',
+      'Visible validation.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Required tools', 'Validation']);
+    assert.match(sections[0].body, /`<!--` and `-->` literals/);
+    assert.match(sections[0].body, /``a ` code span containing <!-- and -->``/);
+    assert.equal(sections[2].body, 'Visible validation.');
+  });
+
+  it('still masks genuine comments adjacent to inline code spans', () => {
+    const markdown = [
+      '## When to use',
+      '`<!--` is visible. <!-- ## Hidden',
+      'Hidden body. --> Visible after `-->`.',
+      '## Validation',
+      'Visible validation.',
+      '<!-- unclosed hidden comment'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.match(sections[0].body, /^`<!--` is visible\.[ ]*\n[ ]*Visible after `-->`\.$/);
+    assert.equal(sections[1].body, 'Visible validation.');
+  });
+
+  it('CLI accepts a complete skill with comment markers in inline code', async () => {
+    const skillDir = await createInlineCodeCommentCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.summary.failedIds, []);
+    assert.deepEqual(report.manifest.sections, [
+      'When to use',
+      'Required tools',
+      'Side-effect boundaries',
+      'Approval requirements',
+      'Examples',
+      'Validation'
+    ]);
+  });
+
   it('CLI rejects required and safety declarations that exist only in fenced examples', async () => {
     const skillDir = await createFencedHeadingCandidate();
     const result = runBin([skillDir]);
@@ -550,6 +600,40 @@ async function createHtmlCommentCandidate() {
     '```',
     '## Validation',
     '<!-- unclosed hidden body',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createInlineCodeCommentCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-inline-code-comments-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '## When to use',
+    'Use this to explain literal `<!--` and ``a ` span with -->`` syntax.',
+    '## Required tools',
+    'Node.js only.',
+    '## Side-effect boundaries',
+    'Reads local files only; no external writes.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Examples',
+    '```sh',
+    'echo ok',
+    '```',
+    '## Validation',
+    'Run npm run release:check.',
     ''
   ].join('\n');
   const files = {
