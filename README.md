@@ -39,7 +39,10 @@ declarations. Required and safety sections must therefore appear as visible
 level-two headings outside fenced examples. Content inside closed or unclosed
 Markdown HTML comments is non-rendered and is also excluded from section
 headings, bodies, examples, and safety checks; visible declarations before and
-after comments remain eligible.
+after comments remain eligible. Literal `<!--` and `-->` sequences inside
+backtick code spans remain visible content and do not open or close comments;
+the closing backtick run must match the opener length, including for spans that
+use multiple backticks to contain a literal backtick.
 
 The manifest describes the same files as the dry-run package plan: `files`,
 `fileCount`, and `packagePlan.include` are derived from one sorted file list.

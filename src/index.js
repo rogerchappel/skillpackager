@@ -93,13 +93,23 @@ function maskHtmlComments(markdown) {
         inComment = closing === -1;
         continue;
       }
-      const start = line.indexOf('<!--', cursor);
-      if (start === -1) {
+      const commentStart = line.indexOf('<!--', cursor);
+      const codeStart = line.indexOf('`', cursor);
+      if (codeStart !== -1 && (commentStart === -1 || codeStart < commentStart)) {
+        const opener = line.slice(codeStart).match(/^`+/)[0];
+        const codeEnd = findClosingBacktickRun(line, codeStart + opener.length, opener.length);
+        if (codeEnd !== -1) {
+          visibleLine += line.slice(cursor, codeEnd + opener.length);
+          cursor = codeEnd + opener.length;
+          continue;
+        }
+      }
+      if (commentStart === -1) {
         visibleLine += line.slice(cursor);
         break;
       }
-      visibleLine += line.slice(cursor, start);
-      cursor = start;
+      visibleLine += line.slice(cursor, commentStart);
+      cursor = commentStart;
       inComment = true;
     }
     masked += visibleLine;
@@ -107,6 +117,17 @@ function maskHtmlComments(markdown) {
     if (openingFence) fence = openingFence[1];
   }
   return masked;
+}
+
+function findClosingBacktickRun(line, cursor, length) {
+  while (cursor < line.length) {
+    const start = line.indexOf('`', cursor);
+    if (start === -1) return -1;
+    const run = line.slice(start).match(/^`+/)[0];
+    if (run.length === length) return start;
+    cursor = start + run.length;
+  }
+  return -1;
 }
 
 export function buildChecks({ sections, files, skillText, requiredSections = REQUIRED_SECTIONS }) {
