@@ -42,7 +42,9 @@ headings, bodies, examples, and safety checks; visible declarations before and
 after comments remain eligible. Literal `<!--` and `-->` sequences inside
 backtick code spans remain visible content and do not open or close comments;
 the closing backtick run must match the opener length, including for spans that
-use multiple backticks to contain a literal backtick.
+use multiple backticks to contain a literal backtick. Matching code spans may
+continue across line endings. Escaped or unclosed backtick runs do not shield
+a genuine HTML comment.
 
 The manifest describes the same files as the dry-run package plan: `files`,
 `fileCount`, and `packagePlan.include` are derived from one sorted file list.
