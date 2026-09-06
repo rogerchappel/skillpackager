@@ -70,6 +70,7 @@ export function parseSections(markdown) {
 function maskHtmlComments(markdown) {
   let inComment = false;
   let fence = null;
+  let codeSpan = null;
   let masked = '';
   for (const match of markdown.matchAll(/^.*(?:\n|$)/gm)) {
     const line = match[0];
@@ -85,6 +86,19 @@ function maskHtmlComments(markdown) {
     let visibleLine = '';
     let cursor = 0;
     while (cursor < line.length) {
+      if (codeSpan) {
+        const closing = codeSpan.end - match.index;
+        if (closing >= line.length) {
+          visibleLine += line.slice(cursor);
+          cursor = line.length;
+          continue;
+        }
+        const end = closing + codeSpan.length;
+        visibleLine += line.slice(cursor, end);
+        cursor = end;
+        codeSpan = null;
+        continue;
+      }
       if (inComment) {
         const closing = line.indexOf('-->', cursor);
         const end = closing === -1 ? line.length : closing + 3;
@@ -95,12 +109,15 @@ function maskHtmlComments(markdown) {
       }
       const commentStart = line.indexOf('<!--', cursor);
       const codeStart = line.indexOf('`', cursor);
-      if (codeStart !== -1 && (commentStart === -1 || codeStart < commentStart)) {
+      if (codeStart !== -1 && (commentStart === -1 || codeStart < commentStart)
+        && !isEscaped(line, codeStart)) {
         const opener = line.slice(codeStart).match(/^`+/)[0];
-        const codeEnd = findClosingBacktickRun(line, codeStart + opener.length, opener.length);
+        const absoluteStart = match.index + codeStart;
+        const codeEnd = findClosingBacktickRun(markdown, absoluteStart + opener.length, opener.length);
         if (codeEnd !== -1) {
-          visibleLine += line.slice(cursor, codeEnd + opener.length);
-          cursor = codeEnd + opener.length;
+          visibleLine += line.slice(cursor, codeStart);
+          cursor = codeStart;
+          codeSpan = { end: codeEnd, length: opener.length };
           continue;
         }
       }
@@ -119,15 +136,21 @@ function maskHtmlComments(markdown) {
   return masked;
 }
 
-function findClosingBacktickRun(line, cursor, length) {
-  while (cursor < line.length) {
-    const start = line.indexOf('`', cursor);
+function findClosingBacktickRun(markdown, cursor, length) {
+  while (cursor < markdown.length) {
+    const start = markdown.indexOf('`', cursor);
     if (start === -1) return -1;
-    const run = line.slice(start).match(/^`+/)[0];
+    const run = markdown.slice(start).match(/^`+/)[0];
     if (run.length === length) return start;
     cursor = start + run.length;
   }
   return -1;
+}
+
+function isEscaped(line, index) {
+  let backslashes = 0;
+  for (let cursor = index - 1; cursor >= 0 && line[cursor] === '\\'; cursor -= 1) backslashes += 1;
+  return backslashes % 2 === 1;
 }
 
 export function buildChecks({ sections, files, skillText, requiredSections = REQUIRED_SECTIONS }) {
