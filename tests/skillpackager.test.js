@@ -169,8 +169,57 @@ describe('skillpackager', () => {
     assert.equal(sections[1].body, 'Visible validation.');
   });
 
+  it('preserves comment markers inside multiline single and variable-length code spans', () => {
+    const markdown = [
+      '## When to use',
+      'A `single-line break',
+      '<!-- literal marker` remains visible.',
+      'A ``variable ` run',
+      '--> literal marker`` remains visible too.',
+      '## Validation',
+      'Visible validation.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.match(sections[0].body, /`single-line break\n<!-- literal marker`/);
+    assert.match(sections[0].body, /``variable ` run\n--> literal marker``/);
+    assert.equal(sections[1].body, 'Visible validation.');
+  });
+
+  it('still masks comments after escaped and unclosed backtick runs', () => {
+    const markdown = [
+      '## When to use',
+      String.raw`Escaped \` marker <!-- comment starts here`,
+      '## Required tools',
+      'Hidden tools. -->',
+      'Unclosed ` span <!-- another hidden comment',
+      '## Approval requirements',
+      'Hidden approval.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use']);
+  });
+
   it('CLI accepts a complete skill with comment markers in inline code', async () => {
     const skillDir = await createInlineCodeCommentCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.summary.failedIds, []);
+    assert.deepEqual(report.manifest.sections, [
+      'When to use',
+      'Required tools',
+      'Side-effect boundaries',
+      'Approval requirements',
+      'Examples',
+      'Validation'
+    ]);
+  });
+
+  it('CLI accepts a complete skill with multiline code-span comment markers', async () => {
+    const skillDir = await createMultilineCodeCommentCandidate();
     const result = runBin([skillDir]);
     assert.equal(result.status, 0, result.stderr || result.stdout);
     const report = JSON.parse(result.stdout);
@@ -633,6 +682,43 @@ async function createInlineCodeCommentCandidate() {
     'echo ok',
     '```',
     '## Validation',
+    'Run npm run release:check.',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createMultilineCodeCommentCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-multiline-code-comments-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '## When to use',
+    'Use this to explain a `literal',
+    '<!-- marker` across lines.',
+    '## Required tools',
+    'Node.js only.',
+    '## Side-effect boundaries',
+    'Reads local files only; no external writes.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Examples',
+    '```sh',
+    'echo ok',
+    '```',
+    '## Validation',
+    'A ``literal ` marker',
+    '--> across lines`` remains visible.',
     'Run npm run release:check.',
     ''
   ].join('\n');
