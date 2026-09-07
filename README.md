@@ -36,7 +36,9 @@ as top-level section boundaries; level-three and deeper headings (`###`) within
 a section are preserved as section body content. Level-two headings inside
 backtick or tilde fenced code blocks are treated as example content, not
 declarations. Required and safety sections must therefore appear as visible
-level-two headings outside fenced examples. Content inside closed or unclosed
+level-two headings outside fenced examples. Backtick fence openers follow
+CommonMark and are ignored when their info string contains a backtick; tilde
+fence info strings may contain backticks. Content inside closed or unclosed
 Markdown HTML comments is non-rendered and is also excluded from section
 headings, bodies, examples, and safety checks; visible declarations before and
 after comments remain eligible. Literal `<!--` and `-->` sequences inside
