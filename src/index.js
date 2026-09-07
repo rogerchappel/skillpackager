@@ -39,7 +39,7 @@ export function parseSections(markdown) {
   let fence = null;
   for (const match of visibleMarkdown.matchAll(/^.*(?:\n|$)/gm)) {
     const line = match[0].replace(/\n$/, '');
-    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    const fenceMatch = matchFenceOpener(line);
     if (fence) {
       if (fenceMatch && fenceMatch[1][0] === fence.character
         && fenceMatch[1].length >= fence.length && /^\s*$/.test(fenceMatch[2])) {
@@ -130,10 +130,17 @@ function maskHtmlComments(markdown) {
       inComment = true;
     }
     masked += visibleLine;
-    const openingFence = visibleLine.match(/^ {0,3}(`{3,}|~{3,})/);
+    const openingFence = matchFenceOpener(visibleLine.replace(/\n$/, ''));
     if (openingFence) fence = openingFence[1];
   }
   return masked;
+}
+
+function matchFenceOpener(line) {
+  const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+  if (!match) return null;
+  if (match[1][0] === '`' && match[2].includes('`')) return null;
+  return match;
 }
 
 function findClosingBacktickRun(markdown, cursor, length) {

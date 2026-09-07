@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject backtick fence openers whose info strings contain a backtick while
+  preserving CommonMark tilde-fence behavior.
 - Record current generation timestamp (`new Date().toISOString()`) in report
   `manifest.generatedAt`.
 - Document CommonMark level-two heading boundary semantics and preservation of
