@@ -83,6 +83,25 @@ describe('skillpackager', () => {
     assert.equal(sections[0].body, 'Visible guidance.');
   });
 
+  it('rejects backticks in backtick-fence info strings but permits them for tilde fences', () => {
+    const markdown = [
+      '# Title',
+      '```text`',
+      'code',
+      '## Validation',
+      'Visible after an invalid backtick opener.',
+      '~~~text`',
+      '## Hidden example heading',
+      '~~~',
+      '## When to use',
+      'Visible guidance.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['Validation', 'When to use']);
+    assert.match(sections[0].body, /Visible after an invalid backtick opener/);
+  });
+
   it('ignores headings and content inside closed and unclosed HTML comments', () => {
     const markdown = [
       '# Title',
@@ -249,6 +268,15 @@ describe('skillpackager', () => {
       'safety:approval'
     ]);
     assert.deepEqual(report.manifest.sections, ['Examples']);
+  });
+
+  it('CLI keeps headings visible after an invalid backtick-fence opener', async () => {
+    const skillDir = await createInvalidBacktickFenceCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.summary.ok, true);
+    assert.ok(report.manifest.sections.includes('Validation'));
   });
 
   it('CLI rejects comment-hidden declarations mixed with visible placeholders', async () => {
@@ -565,6 +593,42 @@ async function createFencedHeadingCandidate() {
     '```sh',
     'echo visible-example',
     '```',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createInvalidBacktickFenceCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-invalid-backtick-fence-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '## When to use',
+    'Use for packaging skills.',
+    '## Required tools',
+    'Use local Node.js.',
+    '## Side-effect boundaries',
+    'Reads local files only.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Examples',
+    '~~~text`',
+    'skillpackager .',
+    '~~~',
+    '```text`',
+    'This is not a CommonMark fence.',
+    '## Validation',
+    'Run npm run release:check.',
     ''
   ].join('\n');
   const files = {
