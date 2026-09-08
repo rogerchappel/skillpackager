@@ -20,6 +20,47 @@ describe('skillpackager', () => {
     assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
   });
 
+  it('parses sections, comments, code spans, and example fences across line endings', () => {
+    const lines = [
+      '# Title',
+      '## When to use',
+      'Use `<!--` literally.',
+      '<!-- ## Hidden section',
+      'Hidden body. -->',
+      'Visible guidance.',
+      '## Examples',
+      '```text',
+      '## Hidden example heading',
+      '```',
+      '## Validation',
+      'Run the checks.'
+    ];
+    const results = ['\n', '\r\n', '\r'].map((ending) => {
+      const sections = parseSections(lines.join(ending));
+      const checks = buildChecks({
+        sections,
+        files: [],
+        skillText: lines.join(ending),
+        requiredSections: ['When to use', 'Examples', 'Validation']
+      });
+      return {
+        sections,
+        checks: checks
+          .filter((check) => check.id.startsWith('section:') || check.id === 'examples:code-block')
+          .map(({ id, ok }) => ({ id, ok }))
+      };
+    });
+
+    assert.deepEqual(results[1], results[0]);
+    assert.deepEqual(results[2], results[0]);
+    assert.deepEqual(results[0].sections.map((section) => section.title), [
+      'When to use',
+      'Examples',
+      'Validation'
+    ]);
+    assert.ok(results[0].checks.every((check) => check.ok));
+  });
+
   it('preserves level-three and deeper subsections within section bodies', () => {
     const markdown = [
       '# Title',

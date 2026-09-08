@@ -34,7 +34,7 @@ export async function inspectSkill(skillDir) {
 }
 
 export function parseSections(markdown) {
-  const visibleMarkdown = maskHtmlComments(markdown);
+  const visibleMarkdown = maskHtmlComments(normalizeLineEndings(markdown));
   const matches = [];
   let fence = null;
   for (const match of visibleMarkdown.matchAll(/^.*(?:\n|$)/gm)) {
@@ -208,7 +208,7 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
 
 function hasCompleteFencedBlock(markdown) {
   let opening = null;
-  for (const line of markdown.split(/\r?\n/)) {
+  for (const line of normalizeLineEndings(markdown).split('\n')) {
     if (!opening) {
       const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
       if (!match || (match[1][0] === '`' && match[2].includes('`'))) continue;
@@ -221,6 +221,10 @@ function hasCompleteFencedBlock(markdown) {
       && closing[1].length >= opening.length) return true;
   }
   return false;
+}
+
+function normalizeLineEndings(markdown) {
+  return markdown.replace(/\r\n?/g, '\n');
 }
 
 export function buildManifest({ root, files, sections }) {
