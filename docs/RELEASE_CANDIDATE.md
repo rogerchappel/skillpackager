@@ -32,5 +32,6 @@ bash scripts/validate.sh
 ## Known limits
 
 - Fixed required-section list.
+- Level-two headings (`##`) define section boundaries; level-three and deeper headings are preserved within section bodies.
 - No publishing or install actions by design.
 - No CI annotation format yet.

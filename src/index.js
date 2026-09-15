@@ -34,12 +34,12 @@ export async function inspectSkill(skillDir) {
 }
 
 export function parseSections(markdown) {
-  const visibleMarkdown = maskHtmlComments(markdown);
+  const visibleMarkdown = maskHtmlComments(normalizeLineEndings(markdown));
   const matches = [];
   let fence = null;
   for (const match of visibleMarkdown.matchAll(/^.*(?:\n|$)/gm)) {
     const line = match[0].replace(/\n$/, '');
-    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    const fenceMatch = matchFenceOpener(line);
     if (fence) {
       if (fenceMatch && fenceMatch[1][0] === fence.character
         && fenceMatch[1].length >= fence.length && /^\s*$/.test(fenceMatch[2])) {
@@ -70,6 +70,7 @@ export function parseSections(markdown) {
 function maskHtmlComments(markdown) {
   let inComment = false;
   let fence = null;
+  let codeSpan = null;
   let masked = '';
   for (const match of markdown.matchAll(/^.*(?:\n|$)/gm)) {
     const line = match[0];
@@ -85,6 +86,19 @@ function maskHtmlComments(markdown) {
     let visibleLine = '';
     let cursor = 0;
     while (cursor < line.length) {
+      if (codeSpan) {
+        const closing = codeSpan.end - match.index;
+        if (closing >= line.length) {
+          visibleLine += line.slice(cursor);
+          cursor = line.length;
+          continue;
+        }
+        const end = closing + codeSpan.length;
+        visibleLine += line.slice(cursor, end);
+        cursor = end;
+        codeSpan = null;
+        continue;
+      }
       if (inComment) {
         const closing = line.indexOf('-->', cursor);
         const end = closing === -1 ? line.length : closing + 3;
@@ -93,20 +107,57 @@ function maskHtmlComments(markdown) {
         inComment = closing === -1;
         continue;
       }
-      const start = line.indexOf('<!--', cursor);
-      if (start === -1) {
+      const commentStart = line.indexOf('<!--', cursor);
+      const codeStart = line.indexOf('`', cursor);
+      if (codeStart !== -1 && (commentStart === -1 || codeStart < commentStart)
+        && !isEscaped(line, codeStart)) {
+        const opener = line.slice(codeStart).match(/^`+/)[0];
+        const absoluteStart = match.index + codeStart;
+        const codeEnd = findClosingBacktickRun(markdown, absoluteStart + opener.length, opener.length);
+        if (codeEnd !== -1) {
+          visibleLine += line.slice(cursor, codeStart);
+          cursor = codeStart;
+          codeSpan = { end: codeEnd, length: opener.length };
+          continue;
+        }
+      }
+      if (commentStart === -1) {
         visibleLine += line.slice(cursor);
         break;
       }
-      visibleLine += line.slice(cursor, start);
-      cursor = start;
+      visibleLine += line.slice(cursor, commentStart);
+      cursor = commentStart;
       inComment = true;
     }
     masked += visibleLine;
-    const openingFence = visibleLine.match(/^ {0,3}(`{3,}|~{3,})/);
+    const openingFence = matchFenceOpener(visibleLine.replace(/\n$/, ''));
     if (openingFence) fence = openingFence[1];
   }
   return masked;
+}
+
+function matchFenceOpener(line) {
+  const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+  if (!match) return null;
+  if (match[1][0] === '`' && match[2].includes('`')) return null;
+  return match;
+}
+
+function findClosingBacktickRun(markdown, cursor, length) {
+  while (cursor < markdown.length) {
+    const start = markdown.indexOf('`', cursor);
+    if (start === -1) return -1;
+    const run = markdown.slice(start).match(/^`+/)[0];
+    if (run.length === length) return start;
+    cursor = start + run.length;
+  }
+  return -1;
+}
+
+function isEscaped(line, index) {
+  let backslashes = 0;
+  for (let cursor = index - 1; cursor >= 0 && line[cursor] === '\\'; cursor -= 1) backslashes += 1;
+  return backslashes % 2 === 1;
 }
 
 export function buildChecks({ sections, files, skillText, requiredSections = REQUIRED_SECTIONS }) {
@@ -129,7 +180,7 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
 
   checks.push({
     id: 'examples:code-block',
-    ok: /```[\s\S]*?```/.test(examples?.body ?? ''),
+    ok: hasCompleteFencedBlock(examples?.body ?? ''),
     message: 'Examples section includes a complete fenced block'
   });
   checks.push({
@@ -155,10 +206,31 @@ export function buildChecks({ sections, files, skillText, requiredSections = REQ
   return checks;
 }
 
+function hasCompleteFencedBlock(markdown) {
+  let opening = null;
+  for (const line of normalizeLineEndings(markdown).split('\n')) {
+    if (!opening) {
+      const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (!match || (match[1][0] === '`' && match[2].includes('`'))) continue;
+      opening = { character: match[1][0], length: match[1].length };
+      continue;
+    }
+
+    const closing = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+    if (closing && closing[1][0] === opening.character
+      && closing[1].length >= opening.length) return true;
+  }
+  return false;
+}
+
+function normalizeLineEndings(markdown) {
+  return markdown.replace(/\r\n?/g, '\n');
+}
+
 export function buildManifest({ root, files, sections }) {
   return {
     name: path.basename(root),
-    generatedAt: new Date(0).toISOString(),
+    generatedAt: new Date().toISOString(),
     entrypoint: 'SKILL.md',
     fileCount: files.length,
     files,

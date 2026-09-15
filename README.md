@@ -1,6 +1,6 @@
 # Skillpackager
 
-Skillpackager is a local-first CLI for checking whether an agent skill directory is ready to package or review. It reads a candidate `SKILL.md`, docs, and fixtures, then emits a deterministic manifest and validation report.
+Skillpackager is a local-first CLI for checking whether an agent skill directory is ready to package or review. It reads a candidate `SKILL.md`, docs, and fixtures, then emits a package manifest with a generation timestamp and validation report.
 
 ## Quickstart
 
@@ -22,22 +22,36 @@ The command exits with code `2` when packaging checks fail. It exits with code
 `64` and prints usage when an option is unknown, an extra positional argument
 is supplied, or `--format` is missing a value or is not `json` or `markdown`.
 
-Reports require each named section to contain content. The fenced example must
-appear inside `Examples`, and dry-run or approval language must appear in the
-boundary sections. Reports also check fixture and docs presence and include a
-dry-run package plan.
+Reports require each named section to contain content. The `Examples` section
+must contain a complete CommonMark backtick or tilde fence. A closing fence
+must use the same character and at least as many delimiters as its opener;
+shorter, mismatched, and unclosed fences fail validation. Dry-run or approval
+language must appear in the boundary sections. Reports also check fixture and
+docs presence and include a dry-run package plan.
 
 Visible level-two CommonMark ATX headings may have zero to three leading spaces
 and an optional closing sequence of `#` characters, such as
-`   ## Validation ###`. Level-two headings inside backtick or tilde fenced code
-blocks are treated as example content, not declarations. Required and safety
-sections must therefore appear as visible headings outside fenced examples.
-Content inside closed or unclosed Markdown HTML comments is non-rendered and
-is also excluded from section headings, bodies, examples, and safety checks;
-visible declarations before and after comments remain eligible.
+`   ## Validation ###`. Section parsing recognizes level-two headings (`##`)
+as top-level section boundaries; level-three and deeper headings (`###`) within
+a section are preserved as section body content. Level-two headings inside
+backtick or tilde fenced code blocks are treated as example content, not
+declarations. Required and safety sections must therefore appear as visible
+level-two headings outside fenced examples. Backtick fence openers follow
+CommonMark and are ignored when their info string contains a backtick; tilde
+fence info strings may contain backticks. Content inside closed or unclosed
+Markdown HTML comments is non-rendered and is also excluded from section
+headings, bodies, examples, and safety checks; visible declarations before and
+after comments remain eligible. Literal `<!--` and `-->` sequences inside
+backtick code spans remain visible content and do not open or close comments;
+the closing backtick run must match the opener length, including for spans that
+use multiple backticks to contain a literal backtick. Matching code spans may
+continue across line endings. Escaped or unclosed backtick runs do not shield
+a genuine HTML comment. Section, comment, code-span, and fenced-example parsing
+accepts LF, CRLF, and CR line endings with identical results.
 
 The manifest describes the same files as the dry-run package plan: `files`,
 `fileCount`, and `packagePlan.include` are derived from one sorted file list.
+`generatedAt` records the ISO-8601 UTC timestamp of report generation.
 Skill source such as `SKILL.md` and files beneath `docs/` and `fixtures/` is
 included. Repository, dependency, cache, and coverage trees named `.git`,
 `node_modules`, `.cache`, or `coverage` are excluded at any depth.
@@ -68,9 +82,10 @@ Placeholders and uncertainty such as `unknown`, `TBD`, missing text, `not docume
 
 ## Limitations
 
-The first release uses CommonMark level-two ATX headings and a fixed required-
-section list. It does not yet support custom policy packs, CI
-annotation output, or release comparison reports.
+The first release uses CommonMark level-two ATX headings for section
+boundaries and a fixed required-section list (preserving level-three and deeper
+subsections within section bodies). It does not yet support custom policy packs,
+CI annotation output, or release comparison reports.
 
 ## Development
 

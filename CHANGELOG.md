@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Reject backtick fence openers whose info strings contain a backtick while
+  preserving CommonMark tilde-fence behavior.
+- Record current generation timestamp (`new Date().toISOString()`) in report
+  `manifest.generatedAt`.
+- Document CommonMark level-two heading boundary semantics and preservation of
+  level-three and deeper subsections within section bodies.
 - Exclude closed and unclosed Markdown HTML comments from section parsing and
   readiness checks while preserving surrounding visible declarations.
 - Added a committed npm lockfile and switched CI and contributor workflows to

@@ -20,6 +20,67 @@ describe('skillpackager', () => {
     assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
   });
 
+  it('parses sections, comments, code spans, and example fences across line endings', () => {
+    const lines = [
+      '# Title',
+      '## When to use',
+      'Use `<!--` literally.',
+      '<!-- ## Hidden section',
+      'Hidden body. -->',
+      'Visible guidance.',
+      '## Examples',
+      '```text',
+      '## Hidden example heading',
+      '```',
+      '## Validation',
+      'Run the checks.'
+    ];
+    const results = ['\n', '\r\n', '\r'].map((ending) => {
+      const sections = parseSections(lines.join(ending));
+      const checks = buildChecks({
+        sections,
+        files: [],
+        skillText: lines.join(ending),
+        requiredSections: ['When to use', 'Examples', 'Validation']
+      });
+      return {
+        sections,
+        checks: checks
+          .filter((check) => check.id.startsWith('section:') || check.id === 'examples:code-block')
+          .map(({ id, ok }) => ({ id, ok }))
+      };
+    });
+
+    assert.deepEqual(results[1], results[0]);
+    assert.deepEqual(results[2], results[0]);
+    assert.deepEqual(results[0].sections.map((section) => section.title), [
+      'When to use',
+      'Examples',
+      'Validation'
+    ]);
+    assert.ok(results[0].checks.every((check) => check.ok));
+  });
+
+  it('preserves level-three and deeper subsections within section bodies', () => {
+    const markdown = [
+      '# Title',
+      '## When to use',
+      '### Subtitle',
+      'Use case details.',
+      '#### Details',
+      'Deep nesting.',
+      '## Validation',
+      '### Verification steps',
+      '1. Step one',
+      '2. Step two'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.equal(sections[0].body, '### Subtitle\nUse case details.\n#### Details\nDeep nesting.');
+    assert.equal(sections[1].body, '### Verification steps\n1. Step one\n2. Step two');
+  });
+
   it('parses indented and closed CommonMark level-two headings', () => {
     const markdown = [
       '# Title',
@@ -61,6 +122,25 @@ describe('skillpackager', () => {
     const sections = parseSections(markdown);
     assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
     assert.equal(sections[0].body, 'Visible guidance.');
+  });
+
+  it('rejects backticks in backtick-fence info strings but permits them for tilde fences', () => {
+    const markdown = [
+      '# Title',
+      '```text`',
+      'code',
+      '## Validation',
+      'Visible after an invalid backtick opener.',
+      '~~~text`',
+      '## Hidden example heading',
+      '~~~',
+      '## When to use',
+      'Visible guidance.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['Validation', 'When to use']);
+    assert.match(sections[0].body, /Visible after an invalid backtick opener/);
   });
 
   it('ignores headings and content inside closed and unclosed HTML comments', () => {
@@ -115,6 +195,105 @@ describe('skillpackager', () => {
     assert.equal(sections[1].body, 'Visible validation.');
   });
 
+  it('preserves HTML comment markers inside single and variable-length inline code spans', () => {
+    const markdown = [
+      '## When to use',
+      'Use this when documenting `<!--` and `-->` literals.',
+      'Use ``a ` code span containing <!-- and -->`` too.',
+      '## Required tools',
+      'Node.js only.',
+      '## Validation',
+      'Visible validation.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Required tools', 'Validation']);
+    assert.match(sections[0].body, /`<!--` and `-->` literals/);
+    assert.match(sections[0].body, /``a ` code span containing <!-- and -->``/);
+    assert.equal(sections[2].body, 'Visible validation.');
+  });
+
+  it('still masks genuine comments adjacent to inline code spans', () => {
+    const markdown = [
+      '## When to use',
+      '`<!--` is visible. <!-- ## Hidden',
+      'Hidden body. --> Visible after `-->`.',
+      '## Validation',
+      'Visible validation.',
+      '<!-- unclosed hidden comment'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.match(sections[0].body, /^`<!--` is visible\.[ ]*\n[ ]*Visible after `-->`\.$/);
+    assert.equal(sections[1].body, 'Visible validation.');
+  });
+
+  it('preserves comment markers inside multiline single and variable-length code spans', () => {
+    const markdown = [
+      '## When to use',
+      'A `single-line break',
+      '<!-- literal marker` remains visible.',
+      'A ``variable ` run',
+      '--> literal marker`` remains visible too.',
+      '## Validation',
+      'Visible validation.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use', 'Validation']);
+    assert.match(sections[0].body, /`single-line break\n<!-- literal marker`/);
+    assert.match(sections[0].body, /``variable ` run\n--> literal marker``/);
+    assert.equal(sections[1].body, 'Visible validation.');
+  });
+
+  it('still masks comments after escaped and unclosed backtick runs', () => {
+    const markdown = [
+      '## When to use',
+      String.raw`Escaped \` marker <!-- comment starts here`,
+      '## Required tools',
+      'Hidden tools. -->',
+      'Unclosed ` span <!-- another hidden comment',
+      '## Approval requirements',
+      'Hidden approval.'
+    ].join('\n');
+
+    const sections = parseSections(markdown);
+    assert.deepEqual(sections.map((section) => section.title), ['When to use']);
+  });
+
+  it('CLI accepts a complete skill with comment markers in inline code', async () => {
+    const skillDir = await createInlineCodeCommentCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.summary.failedIds, []);
+    assert.deepEqual(report.manifest.sections, [
+      'When to use',
+      'Required tools',
+      'Side-effect boundaries',
+      'Approval requirements',
+      'Examples',
+      'Validation'
+    ]);
+  });
+
+  it('CLI accepts a complete skill with multiline code-span comment markers', async () => {
+    const skillDir = await createMultilineCodeCommentCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.deepEqual(report.summary.failedIds, []);
+    assert.deepEqual(report.manifest.sections, [
+      'When to use',
+      'Required tools',
+      'Side-effect boundaries',
+      'Approval requirements',
+      'Examples',
+      'Validation'
+    ]);
+  });
+
   it('CLI rejects required and safety declarations that exist only in fenced examples', async () => {
     const skillDir = await createFencedHeadingCandidate();
     const result = runBin([skillDir]);
@@ -130,6 +309,15 @@ describe('skillpackager', () => {
       'safety:approval'
     ]);
     assert.deepEqual(report.manifest.sections, ['Examples']);
+  });
+
+  it('CLI keeps headings visible after an invalid backtick-fence opener', async () => {
+    const skillDir = await createInvalidBacktickFenceCandidate();
+    const result = runBin([skillDir]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.summary.ok, true);
+    assert.ok(report.manifest.sections.includes('Validation'));
   });
 
   it('CLI rejects comment-hidden declarations mixed with visible placeholders', async () => {
@@ -175,6 +363,11 @@ describe('skillpackager', () => {
     assert.equal(report.summary.ok, true);
     assert.equal(report.summary.failed, 0);
     assert.equal(report.manifest.packagePlan.dryRunOnly, true);
+    assert.notEqual(report.manifest.generatedAt, '1970-01-01T00:00:00.000Z');
+    assert.match(report.manifest.generatedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    const date = new Date(report.manifest.generatedAt);
+    assert.ok(Number.isFinite(date.getTime()));
+    assert.ok(date.getTime() > 1700000000000);
   });
 
   it('keeps manifests and package plans aligned with deterministic exclusions', async () => {
@@ -186,7 +379,10 @@ describe('skillpackager', () => {
     assert.deepEqual(first.manifest.files, included);
     assert.equal(first.manifest.fileCount, included.length);
     assert.deepEqual(first.manifest.packagePlan.include, included);
-    assert.deepEqual(second, first);
+    assert.deepEqual(
+      { ...second, manifest: { ...second.manifest, generatedAt: first.manifest.generatedAt } },
+      first
+    );
     assert.doesNotMatch(JSON.stringify(first), /\.git|node_modules|coverage|\.cache/);
     assert.deepEqual(
       toMarkdown(second).match(/## Package Plan[\s\S]*/)?.[0],
@@ -199,6 +395,43 @@ describe('skillpackager', () => {
     assert.equal(report.summary.ok, false);
     assert.ok(report.summary.failedIds.includes('section:required-tools'));
     assert.ok(report.summary.failedIds.includes('examples:code-block'));
+  });
+
+  it('recognizes complete CommonMark example fences and rejects invalid closures', () => {
+    const cases = [
+      ['tilde fence', '~~~sh\necho ok\n~~~', true],
+      ['longer backtick closer', '````js\nconsole.log(`ok`)\n`````', true],
+      ['longer tilde closer', '~~~~ text\necho ok\n~~~~~', true],
+      ['shorter closer', '````sh\necho no\n```', false],
+      ['mismatched closer', '~~~sh\necho no\n```', false],
+      ['unclosed fence', '```sh\necho no', false],
+      ['backtick in info string', '```bad`info\necho no\n```', false]
+    ];
+
+    for (const [name, body, expected] of cases) {
+      const checks = buildChecks({
+        sections: [{ title: 'Examples', body }],
+        files: [],
+        skillText: '',
+        requiredSections: []
+      });
+      assert.equal(checks.find((check) => check.id === 'examples:code-block').ok, expected, name);
+    }
+  });
+
+  it('CLI accepts tilde and variable-length example fences and rejects bad closures', async () => {
+    for (const [name, fence, expectedStatus] of [
+      ['tilde', '~~~sh\necho ok\n~~~', 0],
+      ['variable length', '````sh\necho ok\n`````', 0],
+      ['short closure', '````sh\necho no\n```', 2],
+      ['mismatched closure', '~~~sh\necho no\n```', 2]
+    ]) {
+      const skillDir = await createExampleFenceCandidate(fence);
+      const result = runBin([skillDir]);
+      assert.equal(result.status, expectedStatus, `${name}: ${result.stderr}`);
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.summary.failedIds.includes('examples:code-block'), expectedStatus === 2, name);
+    }
   });
 
   it('rejects empty required sections and misplaced safety and example content', async () => {
@@ -416,6 +649,42 @@ async function createFencedHeadingCandidate() {
   return skillDir;
 }
 
+async function createInvalidBacktickFenceCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-invalid-backtick-fence-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '## When to use',
+    'Use for packaging skills.',
+    '## Required tools',
+    'Use local Node.js.',
+    '## Side-effect boundaries',
+    'Reads local files only.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Examples',
+    '~~~text`',
+    'skillpackager .',
+    '~~~',
+    '```text`',
+    'This is not a CommonMark fence.',
+    '## Validation',
+    'Run npm run release:check.',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
 async function createCommonMarkHeadingCandidate() {
   const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-commonmark-headings-'));
   temporaryDirectories.push(skillDir);
@@ -485,6 +754,109 @@ async function createHtmlCommentCandidate() {
     '```',
     '## Validation',
     '<!-- unclosed hidden body',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createInlineCodeCommentCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-inline-code-comments-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '## When to use',
+    'Use this to explain literal `<!--` and ``a ` span with -->`` syntax.',
+    '## Required tools',
+    'Node.js only.',
+    '## Side-effect boundaries',
+    'Reads local files only; no external writes.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Examples',
+    '```sh',
+    'echo ok',
+    '```',
+    '## Validation',
+    'Run npm run release:check.',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createMultilineCodeCommentCandidate() {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-multiline-code-comments-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '## When to use',
+    'Use this to explain a `literal',
+    '<!-- marker` across lines.',
+    '## Required tools',
+    'Node.js only.',
+    '## Side-effect boundaries',
+    'Reads local files only; no external writes.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Examples',
+    '```sh',
+    'echo ok',
+    '```',
+    '## Validation',
+    'A ``literal ` marker',
+    '--> across lines`` remains visible.',
+    'Run npm run release:check.',
+    ''
+  ].join('\n');
+  const files = {
+    'SKILL.md': skill,
+    'docs/README.md': 'Documentation\n',
+    'fixtures/case.txt': 'fixture\n'
+  };
+  for (const [relative, content] of Object.entries(files)) {
+    const destination = path.join(skillDir, relative);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, content);
+  }
+  return skillDir;
+}
+
+async function createExampleFenceCandidate(fence) {
+  const skillDir = await mkdtemp(path.join(os.tmpdir(), 'skillpackager-example-fence-'));
+  temporaryDirectories.push(skillDir);
+  const skill = [
+    '# Candidate',
+    '## When to use',
+    'Use for packaging skills.',
+    '## Required tools',
+    'Use local Node.js.',
+    '## Side-effect boundaries',
+    'Runs in dry-run mode.',
+    '## Approval requirements',
+    'No approval is required.',
+    '## Examples',
+    fence,
+    '## Validation',
+    'Run the release checks.',
     ''
   ].join('\n');
   const files = {
