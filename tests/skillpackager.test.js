@@ -871,3 +871,11 @@ async function createExampleFenceCandidate(fence) {
   }
   return skillDir;
 }
+
+describe('published package smoke', () => {
+  it('verifies tarball contents and the installed CLI from an isolated package copy', () => {
+    const result = spawnSync('node', ['scripts/package-smoke.js'], { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /package smoke passed for skillpackager with \d+ packed files/);
+  });
+});
